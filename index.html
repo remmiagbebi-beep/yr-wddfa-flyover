@@ -306,7 +306,7 @@ body.fake-fullscreen #btnMobileMenu{
       <path fill="#ffffff" d="M307.81,212.18c-3.24,0-6.07-2.17-6.91-5.3l-4.82-17.88c-0.84-3.12-3.68-5.3-6.91-5.3h-21.46h-25.44H220.8
         c-3.24,0-6.07,2.17-6.91,5.3l-4.82,17.88c-0.84,3.12-3.68,5.3-6.91,5.3H169.5c-3.96,0-7.16,3.21-7.16,7.16v101.78
         c0,3.96,3.21,7.16,7.16,7.16h170.95c3.96,0,7.16-3.21,7.16-7.16V219.35c0-3.96-3.21-7.16-7.16-7.16H307.81z M282.33,264.94
-        c-0.86,13.64-11.93,24.71-25.58,25.58c-16.54,1.05-30.18-12.59-29.14-29.14c0.86,13.64,11.93,24.71,25.58,25.58
+        c-0.86,13.64-11.93,24.71-25.58,25.58c-16.54,1.05-30.18-12.59-29.14-29.14c0.86-13.64,11.93-24.71,25.58-25.58
         C269.74,234.76,283.38,248.4,282.33,264.94z"/>
       <path fill="#ffffff" d="M82.95,272.41c3.82,0,7.53-1.53,10.23-4.23l21.23-21.23c4.74-4.74,6.4-11.92,3.73-18.06
         c-2.73-6.29-8.88-8.95-18.84-7.57l-0.27,0.27c15.78-71.56,79.7-125.27,155.94-125.27c60.72,0,115.41,33.72,142.73,87.99
@@ -410,6 +410,9 @@ mapboxgl.accessToken="pk.eyJ1IjoicmVtbWlhZ2JlYmkiLCJhIjoiY21odHRrYTQzMTk0bjJqcjE
 
 const GPX_URL="https://raw.githubusercontent.com/remmiagbebi-beep/yr-wddfa-flyover/main/Snowdon%20Via%20The%20Llanberis%20Path.gpx";
 
+/* Issue 2: flip camera so it is behind the walker looking forwards */
+const BEARING_OFFSET_DEG = 180;
+
 const START_ZOOM=15.7,
       CENTER_SMOOTH=0.06,
       MAX_TURN_RATE=4,
@@ -433,6 +436,10 @@ async function fetchText(u){
 function parseGpx(text){
   const xml=new DOMParser().parseFromString(text,"application/xml");
   return toGeoJSON.gpx(xml).features.find(f=>f.geometry?.type==="LineString");
+}
+function normBearing(b){
+  const x = (b % 360 + 360) % 360;
+  return x;
 }
 
 /* FAST FORWARD ICON */
@@ -524,17 +531,24 @@ function isIOS(){
   }
 })();
 
-/* MAIN: load GPX first, then create map centred on THIS route (no globe, no Kinder) */
+/* Issue 1: load GPX first, then create map centred on this route */
 (async()=>{
   const gpxText = await fetchText(GPX_URL);
   const line = parseGpx(gpxText);
 
   let initialCenter = [-4.128, 53.118];
   let initialZoom = 13.5;
+  let initialBearing = -20;
 
   if(line){
     const b = turf.bbox(line);
     initialCenter = [(b[0]+b[2])/2, (b[1]+b[3])/2];
+
+    const coords = line.geometry.coordinates || [];
+    if(coords.length >= 2){
+      const fwd = turf.bearing(turf.point(coords[0]), turf.point(coords[1]));
+      initialBearing = normBearing(fwd + BEARING_OFFSET_DEG);
+    }
   }
 
   map=new mapboxgl.Map({
@@ -543,9 +557,19 @@ function isIOS(){
     center:initialCenter,
     zoom:initialZoom,
     pitch:75,
-    bearing:-20,
+    bearing:initialBearing,
     antialias:true,
     attributionControl:false
+  });
+
+  /* user override detection needs map instance */
+  ["mousedown","touchstart","dragstart","rotatestart","zoomstart","pitchstart"].forEach(ev=>{
+    map.on(ev,e=>{
+      if(!e.originalEvent) return;
+      if(playing && (camMode==="follow"||camMode==="topdown")){
+        userOverride=true;
+      }
+    });
   });
 
   map.on("load",async()=>{
@@ -634,11 +658,20 @@ function isIOS(){
 
       map.once("idle",()=>{
         const b=turf.bbox(route);
+
+        let fitBearing = initialBearing;
+        if(pts.length >= 2){
+          const fwd = turf.bearing(turf.point(pts[0]), turf.point(pts[1]));
+          fitBearing = normBearing(fwd + BEARING_OFFSET_DEG);
+        }
+
         map.fitBounds([[b[0],b[1]],[b[2],b[3]]],{
-          padding:80,pitch:75,bearing:-20,duration:0
+          padding:80,pitch:75,bearing:fitBearing,duration:0
         });
+
         currentZoom = START_ZOOM;
         targetZoom  = START_ZOOM;
+        camBearing = fitBearing;
       });
     }
 
@@ -660,7 +693,7 @@ document.getElementById("btnToggle").onclick=()=>{
 };
 
 document.getElementById("btnRestart").onclick=()=>{
-  if(!route) return;
+  if(!route || !map) return;
   progress=0;
   const startCoord=route.geometry.coordinates[0];
   map.getSource("cursor").setData(turf.point(startCoord));
@@ -755,16 +788,6 @@ document.getElementById("btnZoomOut").onclick=()=>{
   }
 };
 
-["mousedown","touchstart","dragstart","rotatestart","zoomstart","pitchstart"].forEach(ev=>{
-  if(!map) return;
-  map.on(ev,e=>{
-    if(!e.originalEvent) return;
-    if(playing && (camMode==="follow"||camMode==="topdown")){
-      userOverride=true;
-    }
-  });
-});
-
 function tick(ts){
   if(!lastTs) lastTs=ts;
   const dt=(ts-lastTs)/1000;
@@ -782,7 +805,10 @@ function tick(ts){
 
     if((camMode==="follow" || camMode==="topdown") && !userOverride){
       const targetCenter=pos;
-      const targetBearing=turf.bearing(turf.point(pos),turf.point(nxt));
+
+      const fwd = turf.bearing(turf.point(pos),turf.point(nxt));
+      const targetBearing = normBearing(fwd + BEARING_OFFSET_DEG);
+
       const targetPitch=camMode==="topdown"?0:75;
 
       if(camBearing===null) camBearing=targetBearing;
