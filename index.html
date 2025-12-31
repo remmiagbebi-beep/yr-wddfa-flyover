@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html> 
 <html lang="en">
 <head>
@@ -462,10 +463,10 @@ function forceWhite(svg){
 const map=new mapboxgl.Map({
   container:"map",
   style:"mapbox://styles/mapbox/satellite-streets-v12",
-  center:[-1.8743,53.3832],
-  zoom:START_ZOOM,
-  pitch:75,
-  bearing:-20,
+  center:[0,0],
+  zoom:2,
+  pitch:0,
+  bearing:0,
   antialias:true,
   attributionControl:false
 });
@@ -672,10 +673,6 @@ document.getElementById("btnSpeed").onclick=e=>{
 };
 document.addEventListener("click",()=>speedWrap.classList.remove("open"));
 
-/* Fullscreen:
-   - iOS: open same page in new tab with ?fs=1 (fullscreen layout)
-   - others: real Fullscreen API
-*/
 const btnFull=document.getElementById("btnFull");
 
 function isFullscreen(){
@@ -691,7 +688,6 @@ function isIOS(){
   return iOS || iPadOS;
 }
 
-/* Detect iOS fullscreen tab via ?fs=1 and set class */
 (function(){
   const params = new URLSearchParams(window.location.search);
   if(isIOS() && params.get("fs") === "1"){
@@ -801,8 +797,6 @@ function tick(ts){
   requestAnimationFrame(tick);
 }
 
-/* MOBILE MENU TOGGLE – Layers + Speed in vertical stack on mobile,
-   menu stays separate in bottom right */
 (function(){
   const btnMobileMenu = document.getElementById("btnMobileMenu");
   const uiLeft = document.querySelector(".ui-left");
@@ -844,3 +838,4 @@ function tick(ts){
 
 </body>
 </html>
+```
