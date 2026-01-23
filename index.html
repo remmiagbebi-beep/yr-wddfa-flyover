@@ -119,6 +119,22 @@ html,body{
   display:none;
 }
 
+/* Hide all Mapbox branding */
+.mapboxgl-ctrl-logo,
+.mapboxgl-ctrl-attrib,
+.mapboxgl-ctrl-attrib-inner,
+.mapboxgl-ctrl-bottom-left,
+.mapboxgl-ctrl-bottom-right,
+#map .mapboxgl-ctrl-bottom-left,
+#map .mapboxgl-ctrl-bottom-right,
+#map canvas + .mapboxgl-ctrl-bottom-right,
+#map canvas + .mapboxgl-ctrl-bottom-left{
+  display:none !important;
+  visibility:hidden !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
+
 /* Fake fullscreen hook (desktop / android) */
 body.fake-fullscreen #map{
   position:fixed;
@@ -222,7 +238,9 @@ body.fake-fullscreen #btnMobileMenu{
     align-items:flex-end;
   }
 
-  /* iOS FULLSCREEN TAB */
+  /* iOS FULLSCREEN TAB
+     - bigger buttons, but speed icon kept small like normal mobile
+  */
   body.ios-fullscreen{
     --btn-size:57px;
   }
@@ -232,6 +250,7 @@ body.fake-fullscreen #btnMobileMenu{
     height:27px;
   }
 
+  /* KEY CHANGE: fullscreen speed icon back to small size */
   body.ios-fullscreen #iconSpeed{
     width:17px !important;
     height:17px !important;
@@ -263,7 +282,9 @@ body.fake-fullscreen #btnMobileMenu{
 <body>
 <div id="map"></div>
 
+<!-- LEFT SIDE: play / restart / reset / camera -->
 <div class="ui ui-left">
+
   <button id="btnToggle" class="btn">
     <svg id="iconPlay" class="active" viewBox="0 0 24 24">
       <polygon transform="translate(1,0)" points="5,3 19,12 5,21"></polygon>
@@ -328,7 +349,9 @@ body.fake-fullscreen #btnMobileMenu{
   </button>
 </div>
 
+<!-- RIGHT SIDE: fullscreen / zoom / layers / speed -->
 <div class="ui ui-right">
+
   <button id="btnFull" class="btn">
     <svg id="iconFull" class="active" viewBox="0 0 24 24">
       <polyline points="4,9 4,4 9,4" fill="none" stroke="#fff" stroke-width="2"
@@ -377,6 +400,7 @@ body.fake-fullscreen #btnMobileMenu{
   </div>
 </div>
 
+<!-- MOBILE MENU BUTTON -->
 <button id="btnMobileMenu" class="btn mobile-menu-btn">
   <svg id="iconMobileMenu" class="active" viewBox="0 0 24 24">
     <circle cx="6" cy="12" r="2"></circle>
@@ -392,13 +416,9 @@ body.fake-fullscreen #btnMobileMenu{
 <script>
 mapboxgl.accessToken="pk.eyJ1IjoicmVtbWlhZ2JlYmkiLCJhIjoiY21odHRrYTQzMTk0bjJqcjE1b2xhZ2FraSJ9.nTCz33gX0gQt3T4A6VD0oQ";
 
-/* redirect only */
-const GPX_URL="https://raw.githubusercontent.com/remmiagbebi-beep/aberglaslyn-llyn-dinas-flyover/main/Aberglaslyn,%20Llyn%20Dinas%20%26%20Beddgelert.gpx";
+const GPX_URL="https://raw.githubusercontent.com/remmiagbebi-beep/yr-wddfa-flyover/main/Snowdon%20Via%20The%20Llanberis%20Path.gpx";
 
-/* starting view turned by 180 degrees */
-const START_VIEW_OFFSET_DEG = 180;
-
-/* follow camera offset */
+/* Issue 2: flip camera so it is behind the walker looking forwards */
 const BEARING_OFFSET_DEG = 180;
 
 const START_ZOOM=15.7,
@@ -430,10 +450,10 @@ function normBearing(b){
   return x;
 }
 
-/* FAST FORWARD ICON (redirect only) */
+/* FAST FORWARD ICON */
 (async()=>{
   try{
-    const r=await fetch("https://raw.githubusercontent.com/remmiagbebi-beep/aberglaslyn-llyn-dinas-flyover/main/icons/fast-forward.svg");
+    const r=await fetch("https://raw.githubusercontent.com/remmiagbebi-beep/yr-wddfa-flyover/main/icons/fast-forward.svg");
     const t=await r.text();
     const svg=new DOMParser().parseFromString(t,"image/svg+xml").querySelector("svg");
     if(svg){
@@ -447,10 +467,10 @@ function normBearing(b){
   }catch(e){}
 })();
 
-/* LAYERS ICON (redirect only) */
+/* LAYERS ICON */
 (async()=>{
   try{
-    const r=await fetch("https://raw.githubusercontent.com/remmiagbebi-beep/aberglaslyn-llyn-dinas-flyover/main/icons/layers.svg");
+    const r=await fetch("https://raw.githubusercontent.com/remmiagbebi-beep/yr-wddfa-flyover/main/icons/layers.svg");
     const t=await r.text();
     const svg=new DOMParser().parseFromString(t,"image/svg+xml").querySelector("svg");
     if(svg){
@@ -509,6 +529,7 @@ function isIOS(){
   return iOS || iPadOS;
 }
 
+/* Detect iOS fullscreen tab via ?fs=1 and set class */
 (function(){
   const params = new URLSearchParams(window.location.search);
   if(isIOS() && params.get("fs") === "1"){
@@ -518,6 +539,7 @@ function isIOS(){
   }
 })();
 
+/* Issue 1: load GPX first, then create map centred on this route */
 (async()=>{
   const gpxText = await fetchText(GPX_URL);
   const line = parseGpx(gpxText);
@@ -548,9 +570,7 @@ function isIOS(){
     attributionControl:false
   });
 
-  /* keep attribution visible, prevent duplicates */
-  map.addControl(new mapboxgl.AttributionControl({ compact: false }), "bottom-right");
-
+  /* user override detection needs map instance */
   ["mousedown","touchstart","dragstart","rotatestart","zoomstart","pitchstart"].forEach(ev=>{
     map.on(ev,e=>{
       if(!e.originalEvent) return;
@@ -650,7 +670,7 @@ function isIOS(){
         let fitBearing = initialBearing;
         if(pts.length >= 2){
           const fwd = turf.bearing(turf.point(pts[0]), turf.point(pts[1]));
-          fitBearing = normBearing(fwd + BEARING_OFFSET_DEG + START_VIEW_OFFSET_DEG);
+          fitBearing = normBearing(fwd + BEARING_OFFSET_DEG);
         }
 
         map.fitBounds([[b[0],b[1]],[b[2],b[3]]],{
@@ -793,8 +813,10 @@ function tick(ts){
 
     if((camMode==="follow" || camMode==="topdown") && !userOverride){
       const targetCenter=pos;
+
       const fwd = turf.bearing(turf.point(pos),turf.point(nxt));
-      const targetBearing = normBearing(fwd + BEARING_OFFSET_DEG + START_VIEW_OFFSET_DEG);
+      const targetBearing = normBearing(fwd + BEARING_OFFSET_DEG);
+
       const targetPitch=camMode==="topdown"?0:75;
 
       if(camBearing===null) camBearing=targetBearing;
@@ -823,6 +845,8 @@ function tick(ts){
   requestAnimationFrame(tick);
 }
 
+/* MOBILE MENU TOGGLE – Layers + Speed in vertical stack on mobile,
+   menu stays separate in bottom right */
 (function(){
   const btnMobileMenu = document.getElementById("btnMobileMenu");
   const uiLeft = document.querySelector(".ui-left");
@@ -841,8 +865,12 @@ function tick(ts){
     const speedWrapEl  = document.getElementById("speedWrap");
     const layersBtnEl  = document.getElementById("btnLayers");
 
-    if(layersBtnEl){ uiLeft.appendChild(layersBtnEl); }
-    if(speedWrapEl){ uiLeft.appendChild(speedWrapEl); }
+    if(layersBtnEl){
+      uiLeft.appendChild(layersBtnEl);
+    }
+    if(speedWrapEl){
+      uiLeft.appendChild(speedWrapEl);
+    }
 
     btnMobileMenu.style.display = "flex";
     setControlsVisible(false);
