@@ -119,19 +119,15 @@ html,body{
   display:none;
 }
 
-/* Keep only the compact attribution (i) and move it bottom right */
-.mapboxgl-ctrl-attrib.mapboxgl-compact{
-  right:10px !important;
-  bottom:10px !important;
-  left:auto !important;
-  top:auto !important;
-  position:absolute !important;
-}
-
-/* Hide expanded attribution bar */
-.mapboxgl-ctrl-attrib:not(.mapboxgl-compact){
+/* IMPORTANT: do not hide Mapbox branding or attribution */
+/* Removed:
+.mapboxgl-ctrl-logo,
+.mapboxgl-ctrl-attrib,
+.mapboxgl-ctrl-bottom-left,
+.mapboxgl-ctrl-bottom-right{
   display:none !important;
 }
+*/
 
 /* Fake fullscreen hook (desktop / android) */
 body.fake-fullscreen #map{
@@ -312,7 +308,7 @@ body.fake-fullscreen #btnMobileMenu{
       <path fill="#ffffff" d="M307.81,212.18c-3.24,0-6.07-2.17-6.91-5.3l-4.82-17.88c-0.84-3.12-3.68-5.3-6.91-5.3h-21.46h-25.44H220.8
         c-3.24,0-6.07,2.17-6.91,5.3l-4.82,17.88c-0.84,3.12-3.68,5.3-6.91,5.3H169.5c-3.96,0-7.16,3.21-7.16,7.16v101.78
         c0,3.96,3.21,7.16,7.16,7.16h170.95c3.96,0,7.16-3.21,7.16-7.16V219.35c0-3.96-3.21-7.16-7.16-7.16H307.81z M282.33,264.94
-        c-0.86,13.64-11.93,24.71-25.58,25.58c-16.54,1.05-30.18-12.59-29.14-29.14c0.86-13.64,11.93-24.71,25.58-25.58
+        c-0.86,13.64-11.93,24.71-25.58,25.58c-16.54,1.05-30.18-12.59-29.14-29.14c0.86,13.64,11.93,24.71,25.58,25.58
         C269.74,234.76,283.38,248.4,282.33,264.94z"/>
       <path fill="#ffffff" d="M82.95,272.41c3.82,0,7.53-1.53,10.23-4.23l21.23-21.23c4.74-4.74,6.4-11.92,3.73-18.06
         c-2.73-6.29-8.88-8.95-18.84-7.57l-0.27,0.27c15.78-71.56,79.7-125.27,155.94-125.27c60.72,0,115.41,33.72,142.73,87.99
@@ -565,8 +561,11 @@ function isIOS(){
     pitch:75,
     bearing:initialBearing,
     antialias:true,
-    attributionControl:true
+    attributionControl:false
   });
+
+  /* MINIMUM ATTRIBUTION BACK ON (single control, no duplicates) */
+  map.addControl(new mapboxgl.AttributionControl({ compact: false }), "bottom-right");
 
   /* user override detection needs map instance */
   ["mousedown","touchstart","dragstart","rotatestart","zoomstart","pitchstart"].forEach(ev=>{
