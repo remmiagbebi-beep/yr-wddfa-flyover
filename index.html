@@ -119,15 +119,19 @@ html,body{
   display:none;
 }
 
-/* REMOVED: Hide all Mapbox branding */
-/*
-.mapboxgl-ctrl-logo,
-.mapboxgl-ctrl-attrib,
-.mapboxgl-ctrl-bottom-left,
-.mapboxgl-ctrl-bottom-right{
+/* Keep only the compact attribution (i) and move it bottom right */
+.mapboxgl-ctrl-attrib.mapboxgl-compact{
+  right:10px !important;
+  bottom:10px !important;
+  left:auto !important;
+  top:auto !important;
+  position:absolute !important;
+}
+
+/* Hide expanded attribution bar */
+.mapboxgl-ctrl-attrib:not(.mapboxgl-compact){
   display:none !important;
 }
-*/
 
 /* Fake fullscreen hook (desktop / android) */
 body.fake-fullscreen #map{
@@ -562,16 +566,6 @@ function isIOS(){
     bearing:initialBearing,
     antialias:true,
     attributionControl:true
-  });
-
-  /* Add Maxar credit into the existing attribution control */
-  map.on("load",()=>{
-    try{
-      map.addControl(new mapboxgl.AttributionControl({
-        compact:true,
-        customAttribution:"© Maxar"
-      }), "bottom-right");
-    }catch(e){}
   });
 
   /* user override detection needs map instance */
